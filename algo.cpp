@@ -6,6 +6,7 @@
 // http://linuxtv.org/downloads/v4l-dvb-apis/capture-example.html
 // http://www.linuxconsulting.ro/picturegrabber/
 // http://habrahabr.ru/post/212531/
+// http://docs.opencv.org/trunk/doc/py_tutorials/py_gui/py_video_display/py_video_display.html
 
 #include "headers.hpp"
 #include "nodes.hpp"
