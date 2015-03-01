@@ -10,19 +10,30 @@
 
 namespace NMSAlgo {
 	
-	class CSuffixTree {
-	private:
-		CNode* m_root;
-		std::string m_str;
+	template <typename SizeStrArr>
+	class CCommonSuffixTree {
+	public:
+		typedef CBaseNode <SizeStrArr> BaseNode;
 		
-		bool IsRoot (const CNode* ptr_link) const {
+	private:
+		BaseNode* m_root;
+		std::string m_str_arr[SizeStrArr];
+		
+		bool IsRoot (const BaseNode* ptr_link) const {
 			return (ptr_link->GetBegin () == 0) && (ptr_link->GetEnd () == 0);
 		}
 		
+		virtual BaseNode* MakeLeafNode (size_t i, BaseNode* parent) {
+			return new CFastLeafNode<SizeStrArr> (i, parent);
+		}
+		
+		virtual BaseNode* MakeInetrnalNode (size_t i, size_t j, BaseNode* parent) {
+			return new CFastInternalNode<SizeStrArr> (i, j, parent);
+		}
+		
 	public:
-	
-		CSuffixTree ():
-			m_root (new CNode (0, 0, NULL))
+		CCommonSuffixTree ():
+			m_root (MakeInetrnalNode (0, 0, nullptr))
 		{
 			m_root->SetSuffLink (m_root);
 			m_root->SetParent (m_root);
@@ -30,7 +41,12 @@ namespace NMSAlgo {
 			return;
 		}
 		
-		~ CSuffixTree () {}
+		virtual ~ CCommonSuffixTree () {delete m_root;}
+		
+		
+		
+		
+		
 		
 		void ConstructByUkkonenAlgo (const std::string & str) {
 			State ret_inf = {m_root, 0, 0};
