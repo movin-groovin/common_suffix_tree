@@ -2,6 +2,7 @@
 // g++ -std=c++11 ukkonen.cpp -o ukk_algo -g -pg
 // g++ -std=c++11 ukkonen.cpp -o ukk_algo -DNDEBUG
 // g++ -std=c++11 ukkonen.cpp -o ukk_algo -DNDEBUG -DMEMORY_TEST
+// http://linuxtv.org/downloads/v4l-dvb-apis/capture-example.html
 
 #include "headers.hpp"
 #include "nodes.hpp"
