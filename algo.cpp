@@ -3,11 +3,6 @@
 // g++ -std=c++11 ukkonen.cpp -o ukk_algo -DNDEBUG
 // g++ -std=c++11 ukkonen.cpp -o ukk_algo -DNDEBUG -DMEMORY_TEST
 
-// http://linuxtv.org/downloads/v4l-dvb-apis/capture-example.html
-// http://www.linuxconsulting.ro/picturegrabber/
-// http://habrahabr.ru/post/212531/
-// http://docs.opencv.org/trunk/doc/py_tutorials/py_gui/py_video_display/py_video_display.html
-
 #include "headers.hpp"
 #include "nodes.hpp"
 
@@ -15,14 +10,23 @@
 
 namespace NMSAlgo {
 	
-	template <typename SizeStrArr>
+	template <size_t SizeStrArr = 10, char TerminalChar = '$'>
 	class CCommonSuffixTree {
 	public:
 		typedef CBaseNode <SizeStrArr> BaseNode;
 		
+		struct PRINT_ENTRY {
+			BaseNode* element;
+			unsigned char cnt;
+			std::string space;
+		};
+		
 	private:
 		BaseNode* m_root;
 		std::string m_str_arr[SizeStrArr];
+		std::string m_phase_str;
+		size_t m_phase_str_index;
+		
 		
 		bool IsRoot (const BaseNode* ptr_link) const {
 			return (ptr_link->GetBegin () == 0) && (ptr_link->GetEnd () == 0);
@@ -36,9 +40,12 @@ namespace NMSAlgo {
 			return new CFastInternalNode<SizeStrArr> (i, j, parent);
 		}
 		
+		void CopyStrIndexesLeafsToInternals ();
+		
 	public:
 		CCommonSuffixTree ():
-			m_root (MakeInetrnalNode (0, 0, nullptr))
+			m_root (MakeInetrnalNode (0, 0, nullptr)),
+			m_phase_str_index (-1)
 		{
 			m_root->SetSuffLink (m_root);
 			m_root->SetParent (m_root);
@@ -47,56 +54,57 @@ namespace NMSAlgo {
 		}
 		
 		virtual ~ CCommonSuffixTree () {delete m_root;}
-		
-		
-		
-		
-		
-		
-		void ConstructByUkkonenAlgo (const std::string & str) {
-			State ret_inf = {m_root, 0, 0};
+		// ----------------------------------------------------------
+		void ConstructByUkkonenAlgo (const vector <std::string> & data) {
+			State <BaseNode> ret_inf = {m_root, 0, 0};
 			
-			m_str = str;
 			
-			for (size_t i = 0; i < m_str.length (); ++i) {
-				ret_inf = AppendChar (ret_inf.node, ret_inf.ch, ret_inf.length, i);
+			if (data.size() > SizeStrArr) {
+				std::ostringstream ossCnv;
+				ossCnv << SizeStrArr;
+				throw std::lofic_error (
+					"Too many srtings for inserting, max = " + ossCnv.str()
+				);
+			}
+			
+			for (unsigned i = 0; i < data.size(); ++i) {
+				m_phase_str = m_str_arr[i] = data[i] + TerminalChar;
+				m_one_str_index = i;
+				for (size_t j = 0; j < m_phase_str.length (); ++j) {
+					ret_inf = AppendChar (ret_inf.node, ret_inf.ch, ret_inf.length, j);
+				}
 			}
 			
 			return;
 		}
-		
-		CNode* InsertNode (CNode* parent, size_t i)
+		// ----------------------------------------------------------
+		BaseNode* InsertNode (BaseNode* parent, size_t i)
 		{
-			CNode* new_node (new CNode (i, -1, parent));
-			parent->SetChild (new_node, m_str[i]);
+			BaseNode* new_node (MakeLeafNode (i, parent));
+			new_node->AddStringIndex (m_one_str_index);
+			parent->SetChild (new_node, m_phase_str[i]);
 			
 			return new_node;
 		}
-		
-		CNode* SplitEdge (CNode* base, size_t len) {
-			CNode* parent = base->GetParent ();
-			CNode* new_node {new CNode (
+		// ----------------------------------------------------------
+		BaseNode* SplitEdge (BaseNode* base, size_t len) {
+			BaseNode* parent = base->GetParent ();
+			BaseNode* new_node (MakeInetrnalNode (
 					base->GetBegin (),
 					base->GetBegin () + len,
 					parent
 				)
-			};
+			);
 			
-			new_node->SetChild (base, m_str [base->GetBegin () + len]);
-			parent->SetChild (new_node, m_str[base->GetBegin ()]);
+			new_node->SetChild (base, m_phase_str [base->GetBegin () + len]);
+			parent->SetChild (new_node, m_phase_str [base->GetBegin ()]);
 			
 			base->SetBegin (base->GetBegin () + len);
 			base->SetParent (new_node);
 			
 			return new_node;
 		}
-		
-		struct PRINT_ENTRY {
-			CNode* element;
-			unsigned char cnt;
-			std::string space;
-		};
-
+		// ----------------------------------------------------------
 		void PrintDfs () const {
 			std::stack <PRINT_ENTRY> stack;
 			std::string base_space ("  ");
