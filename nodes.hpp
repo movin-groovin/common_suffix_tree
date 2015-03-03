@@ -55,28 +55,32 @@ public:
 		return;
 	}
 	void AddStringIndex (size_t index) {
-		assert (index < ArrStrIndexSize);
+		assert (index < SizeStrArr);
 		m_str_ind_arr[index] = 1;
 		return;
 	}
 	bool HasIndex (size_t index) const {
-		assert (index < ArrStrIndexSize);
+		assert (index < SizeStrArr);
 		return m_str_ind_arr[index];
 	}
 	bool HasAllIndexes () const {
 		unsigned counter = 0;
 		std::for_each (
 			&m_str_ind_arr[0],
-			&m_str_ind_arr[0] + ArrStrIndexSize,
+			&m_str_ind_arr[0] + SizeStrArr,
 			[&] (unsigned char *ptr)->void {counter += *ptr;}
 		);
-		return counter == ArrStrIndexSize;
+		return counter == SizeStrArr;
+	}
+	size_t GetFirstStrIndex () const {
+		assert (false);
+		return 0;
 	}
 	
 	//
 	
 	CBaseNode (CBaseNode * p): m_parent (p) {
-		std::fill (&m_str_ind_arr[0], &m_str_ind_arr[0] + ArrStrIndexSize, 0);
+		std::fill (&m_str_ind_arr[0], &m_str_ind_arr[0] + SizeStrArr, 0);
 		return;
 	}
 	virtual ~ CBaseNode () {}
@@ -88,7 +92,7 @@ private:
 
 // ================================================================
 
-template <typename SizeStrArr>
+template <size_t SizeStrArr>
 class CFastLeafNode: public CBaseNode <SizeStrArr> {
 public:
 	virtual bool IsLeaf () const {
@@ -106,9 +110,9 @@ public:
 		return;
 	}
 	
-	CFastLeafNode (size_t i, CBaseNode* parent):
+	CFastLeafNode (size_t i, CBaseNode <SizeStrArr>* parent):
 		m_i(i),
-		CBaseNode(parent)
+		CBaseNode <SizeStrArr> (parent)
 	{}
 	
 	~ CFastLeafNode () {}
@@ -120,7 +124,7 @@ private:
 
 // ================================================================
 
-template <typename SizeStrArr>
+template <size_t SizeStrArr>
 class CFastInternalNode: public CBaseNode <SizeStrArr> {
 public:
 	typedef CBaseNode <SizeStrArr> BaseNode;
@@ -150,10 +154,10 @@ public:
 		return;
 	}
 	virtual BaseNode* GetChild (char ch) const {
-		return m_childs[GetCharIndex (ch)];
+		return m_childs[BaseNode::GetCharIndex (ch)];
 	}
 	virtual void SetChild (BaseNode* child, char ch) {
-		m_childs[GetCharIndex (ch)] = child;
+		m_childs[BaseNode::GetCharIndex (ch)] = child;
 		return;
 	}
 	
@@ -161,15 +165,15 @@ public:
 	CFastInternalNode (
 		size_t i,
 		size_t j,
-		CBaseNode* parent
+		BaseNode* parent
 	):
 		m_i(i),
 		m_j(j),
 		m_suff_link (nullptr),
-		CBaseNode(parent)
+		BaseNode(parent)
 	{
 		assert (!parent->IsLeaf ());
-		std::fill (&m_childs[0], &m_childs[0] + chars_number, nullptr);
+		std::fill (&m_childs[0], &m_childs[0] + BaseNode::chars_number, nullptr);
 		return;
 	}
 	
@@ -177,7 +181,7 @@ public:
 	{
 		std::for_each (
 			&m_childs[0],
-			&m_childs[0] + chars_number,
+			&m_childs[0] + BaseNode::chars_number,
 			[] (BaseNode* ptr)->void {if (ptr) delete ptr;}
 		);
 		return;
@@ -188,7 +192,7 @@ private:
 	size_t m_i;
 	size_t m_j;
 	BaseNode* m_suff_link;
-	BaseNode* m_childs [typename BaseNode::chars_number];
+	BaseNode* m_childs [BaseNode::chars_number];
 };
 
 

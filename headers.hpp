@@ -32,7 +32,6 @@
 
 
 
-class CBaseNode;
 template <typename TPtr>
 struct State {
 	TPtr node;

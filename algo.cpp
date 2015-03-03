@@ -5,6 +5,7 @@
 
 #include "headers.hpp"
 #include "nodes.hpp"
+#include <typeinfo>
 
 
 
@@ -14,6 +15,8 @@ namespace NMSAlgo {
 	class CCommonSuffixTree {
 	public:
 		typedef CBaseNode <SizeStrArr> BaseNode;
+		typedef State <BaseNode*> BaseState;
+		typedef Ret <BaseNode*> BaseRet;
 		
 		struct PRINT_ENTRY {
 			BaseNode* element;
@@ -25,7 +28,7 @@ namespace NMSAlgo {
 		BaseNode* m_root;
 		std::string m_str_arr[SizeStrArr];
 		std::string m_phase_str;
-		size_t m_phase_str_index;
+		size_t m_one_str_index;
 		
 		
 		bool IsRoot (const BaseNode* ptr_link) const {
@@ -45,7 +48,7 @@ namespace NMSAlgo {
 	public:
 		CCommonSuffixTree ():
 			m_root (MakeInetrnalNode (0, 0, nullptr)),
-			m_phase_str_index (-1)
+			m_one_str_index (-1)
 		{
 			m_root->SetSuffLink (m_root);
 			m_root->SetParent (m_root);
@@ -55,14 +58,14 @@ namespace NMSAlgo {
 		
 		virtual ~ CCommonSuffixTree () {delete m_root;}
 		// ----------------------------------------------------------
-		void ConstructByUkkonenAlgo (const vector <std::string> & data) {
-			State <BaseNode> ret_inf = {m_root, 0, 0};
+		void ConstructByUkkonenAlgo (const std::vector <std::string> & data) {
+			BaseState ret_inf = {m_root, 0, 0};
 			
 			
 			if (data.size() > SizeStrArr) {
 				std::ostringstream ossCnv;
 				ossCnv << SizeStrArr;
-				throw std::lofic_error (
+				throw std::logic_error (
 					"Too many srtings for inserting, max = " + ossCnv.str()
 				);
 			}
@@ -113,12 +116,12 @@ namespace NMSAlgo {
 			stack.push (PRINT_ENTRY {m_root, 0, ""});
 			while (!stack.empty ())
 			{
-				CNode* proc_elem = stack.top().element;
+				BaseNode* proc_elem = stack.top().element;
 				unsigned char proc_cnt = stack.top().cnt;
 				
-				for (int cnt = proc_cnt; cnt <= CNode::chars_number - 1; ++cnt)
+				for (int cnt = proc_cnt; cnt <= BaseNode::chars_number - 1; ++cnt)
 				{
-					CNode* child = proc_elem->GetChild (cnt);
+					BaseNode* child = proc_elem->GetChild (cnt);
 					if (child) {
 						PrintEdge (child, stack.top().space);
 						if (!child->IsLeaf ()) {
@@ -145,29 +148,32 @@ namespace NMSAlgo {
 			return;
 		}
 		
-		void PrintEdge (CNode* node, const std::string & prefix) const {
+		void PrintEdge (BaseNode* node, const std::string & prefix) const {
+			std::string edge_str = m_str_arr[node->GetFirstStrIndex ()];
+			
 			std::cout << prefix << std::string().assign (
-				m_str,
+				edge_str,
 				node->GetBegin(),
-				node->GetEdgeLength(m_str.length())
+				node->GetEdgeLength(edge_str.length())
 			) << '\n';
 			
 			return;
 		}
 		
-		State WalkDown (
-			CNode* from,
+		BaseState WalkDown (
+			BaseNode* from,
 			size_t len,
 			char ch,
 			size_t i
 		) const
 		{
-			State ret {from, len, ch};
+			BaseState ret {from, len, ch};
+			std::string edge_str = m_str_arr [m_one_str_index];
 			
 			while (ret.length && ret.node->GetChild (ret.ch)->GetEdgeLength (i + 1) < ret.length) {
 				ret.node = ret.node->GetChild (ret.ch);
 				ret.length -= ret.node->GetEdgeLength (i + 1);
-				ret.ch = m_str[i - ret.length];
+				ret.ch = edge_str[i - ret.length];
 			}
 			if (!ret.length) {
 				ret.ch = 0;
@@ -181,29 +187,30 @@ namespace NMSAlgo {
 			return ret;
 		}
 		
-		Ret AddSuffix (
-			CNode* node_walk_from,
+		BaseRet AddSuffix (
+			BaseNode* node_walk_from,
 			char ch,
 			size_t len,
 			size_t i
 		);
 		
-		State AppendChar (
-			CNode* node,
+		BaseState AppendChar (
+			BaseNode* node,
 			char ch,
 			size_t length,
 			size_t i
 		);
 	};
 	// ====================================================================================
-	Ret CSuffixTree::AddSuffix (
-		CNode* node_walk_from,
+	template <size_t SizeStrArr, char TerminalChar>
+	Ret <CBaseNode <SizeStrArr>*> CCommonSuffixTree <SizeStrArr, TerminalChar>::AddSuffix (
+		BaseNode* node_walk_from,
 		char ch,
 		size_t len,
 		size_t i
 	)
 	{
-		State start = WalkDown (node_walk_from, len, ch, i);
+		BaseState start = WalkDown (node_walk_from, len, ch, i);
 		node_walk_from = start.node;
 		len = start.length;
 		ch = start.ch;
@@ -212,11 +219,11 @@ namespace NMSAlgo {
 		if (!len) {
 			assert (ch == 0);			
 			if (node_walk_from->GetChild (m_str [i])) {
-				return Ret {nullptr, nullptr};
+				return BaseRet {nullptr, nullptr};
 			}
 			else {		
 				InsertNode (node_walk_from, i);
-				return Ret {nullptr, node_walk_from};
+				return BaseRet {nullptr, node_walk_from};
 			}
 		}
 		else {
@@ -224,33 +231,34 @@ namespace NMSAlgo {
 			// 'node_walk_from->GetChild (ch)->GetEdgeLength(i)'
 			assert (node_walk_from->GetChild (ch)->GetEdgeLength (i + 1) > len);
 			
-			CNode* node_begin = node_walk_from->GetChild (ch);
+			BaseNode* node_begin = node_walk_from->GetChild (ch);
 			if (m_str[node_begin->GetBegin () + len] == m_str[i]) {
-				return Ret {nullptr, nullptr};
+				return BaseRet {nullptr, nullptr};
 			}
 			else {
-				CNode* new_node = SplitEdge (node_begin, len);
+				BaseNode* new_node = SplitEdge (node_begin, len);
 				InsertNode (new_node, i);
-				return Ret {new_node, nullptr};
+				return BaseRet {new_node, nullptr};
 			}
 		}
 		
 		
 		// never reaches this place
 		assert (1 != 1);
-		return Ret {nullptr, nullptr};
+		return BaseRet {nullptr, nullptr};
 	}
 	// ====================================================================================
-	State CSuffixTree::AppendChar (
-		CNode* node,
+	template <size_t SizeStrArr, char TerminalChar>
+	State <CBaseNode <SizeStrArr>*> CCommonSuffixTree<SizeStrArr, TerminalChar>::AppendChar (
+		BaseNode* node,
 		char ch,
 		size_t length,
 		size_t i
 	)
 	{
-		Ret ret;
-		CNode* prev_node = nullptr;
-		CNode* exist_node (node);
+		BaseRet ret;
+		BaseNode* prev_node = nullptr;
+		BaseNode* exist_node (node);
 		
 		
 		while (true) {
@@ -260,7 +268,7 @@ namespace NMSAlgo {
 			if (!ret.new_node && !ret.internal_node) 
 			{
 				if (prev_node && prev_node->GetSuffLink() == NULL) {
-					State start = WalkDown (exist_node, length, ch, i);
+					BaseState start = WalkDown (exist_node, length, ch, i);
 					
 					prev_node->SetSuffLink (start.node);
 				}
@@ -269,18 +277,18 @@ namespace NMSAlgo {
 					assert (length == 0);
 					
 					if (exist_node->GetChild(m_str[i])->GetEdgeLength(i + 1) == 1) {
-						return State {exist_node->GetChild(m_str[i]), 0, 0};
+						return BaseState {exist_node->GetChild(m_str[i]), 0, 0};
 					}
-					return State {exist_node, 1, m_str[i]};
+					return BaseState {exist_node, 1, m_str[i]};
 				}
 				// GetEdgeLength (i + 1) -> i + 1, not i, because we have
 				// added implicitly for every leaf node new character
 				else if (exist_node->GetChild (ch)->GetEdgeLength (i + 1) == length + 1) {
 					exist_node = exist_node->GetChild (ch);
-					return State {exist_node, 0, 0};
+					return BaseState {exist_node, 0, 0};
 				}
 				else {
-					return State {exist_node, length + 1, ch};
+					return BaseState {exist_node, length + 1, ch};
 				}
 			}
 			// Second case: exists edge has been splited, the edge of 
@@ -325,7 +333,7 @@ namespace NMSAlgo {
 				prev_node = ret.internal_node;
 				
 				if (ret.internal_node == m_root) // exist_node == ret.internal_node
-					return State {m_root, 0, 0};
+					return BaseState {m_root, 0, 0};
 				
 				exist_node = ret.internal_node->GetSuffLink ();
 			}
@@ -357,29 +365,18 @@ std::string ReadFromStreamUntilEof (std::istream & in_s, char no_ch) {
 
 int main (int argc, char **argv) {
 	try {
-		const char fin_ch = '$';
-		std::string test_str = "ababc";
-		NMSUkkonenAlgo::CSuffixTree suff_tree;
+		std::vector<std::string> test_data {"abc", "bcb", "abcd"};
+		NMSAlgo::CCommonSuffixTree <> cs_tree;
 		
-		if (argc > 1) {
-			std::ifstream ifs (argv[1]);
-			if (!ifs) {
-				std::cout << "Can't open the file: " << argv[1] << "\n";
-				return 10002;
-			}
-			std::getline (ifs, test_str);
-		} else {
-			test_str = ReadFromStreamUntilEof (std::cin, fin_ch);
-		}
-		
-		
-		test_str += fin_ch;
-		
-		suff_tree.ConstructByUkkonenAlgo (test_str);
+
+		cs_tree.ConstructByUkkonenAlgo (test_data);
 #ifndef NDEBUG
-		std::cout << "\nString: " << test_str << "\n\n";
+		std::cout << "\nStrings:\n";
+		for (auto &val : test_data)
+			std::cout << "  " << val << "\n";
+		std::cout << "\n";
 		std::cout << "Suffix tree: \n";
-		suff_tree.PrintDfs ();
+		cs_tree.PrintDfs ();
 #endif
 #ifdef MEMORY_TEST
 		char ch;
