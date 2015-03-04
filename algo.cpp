@@ -27,7 +27,7 @@ namespace NMSAlgo {
 	private:
 		BaseNode* m_root;
 		std::string m_str_arr[SizeStrArr];
-		std::string m_phase_str;
+		std::string m_one_str;
 		size_t m_one_str_index;
 		
 		
@@ -35,19 +35,19 @@ namespace NMSAlgo {
 			return (ptr_link->GetBegin () == 0) && (ptr_link->GetEnd () == 0);
 		}
 		
-		virtual BaseNode* MakeLeafNode (size_t i, BaseNode* parent) {
-			return new CFastLeafNode<SizeStrArr> (i, parent);
+		virtual BaseNode* MakeLeafNode (size_t i, BaseNode* parent, size_t primary_index) {
+			return new CFastLeafNode<SizeStrArr> (i, parent, primary_index);
 		}
 		
-		virtual BaseNode* MakeInetrnalNode (size_t i, size_t j, BaseNode* parent) {
-			return new CFastInternalNode<SizeStrArr> (i, j, parent);
+		virtual BaseNode* MakeInetrnalNode (size_t i, size_t j, BaseNode* parent, size_t primary_index) {
+			return new CFastInternalNode<SizeStrArr> (i, j, parent, primary_index);
 		}
 		
 		void CopyStrIndexesLeafsToInternals ();
 		
 	public:
 		CCommonSuffixTree ():
-			m_root (MakeInetrnalNode (0, 0, nullptr)),
+			m_root (MakeInetrnalNode (0, 0, nullptr, -1)),
 			m_one_str_index (-1)
 		{
 			m_root->SetSuffLink (m_root);
@@ -71,9 +71,9 @@ namespace NMSAlgo {
 			}
 			
 			for (unsigned i = 0; i < data.size(); ++i) {
-				m_phase_str = m_str_arr[i] = data[i] + TerminalChar;
+				m_one_str = m_str_arr[i] = data[i] + TerminalChar;
 				m_one_str_index = i;
-				for (size_t j = 0; j < m_phase_str.length (); ++j) {
+				for (size_t j = 0; j < m_one_str.length (); ++j) {
 					ret_inf = AppendChar (ret_inf.node, ret_inf.ch, ret_inf.length, j);
 				}
 			}
@@ -83,9 +83,9 @@ namespace NMSAlgo {
 		// ----------------------------------------------------------
 		BaseNode* InsertNode (BaseNode* parent, size_t i)
 		{
-			BaseNode* new_node (MakeLeafNode (i, parent));
+			BaseNode* new_node (MakeLeafNode (i, parent, m_one_str_index));
 			new_node->AddStringIndex (m_one_str_index);
-			parent->SetChild (new_node, m_phase_str[i]);
+			parent->SetChild (new_node, m_one_str[i]);
 			
 			return new_node;
 		}
@@ -95,12 +95,13 @@ namespace NMSAlgo {
 			BaseNode* new_node (MakeInetrnalNode (
 					base->GetBegin (),
 					base->GetBegin () + len,
-					parent
+					parent,
+					m_one_str_index
 				)
 			);
 			
-			new_node->SetChild (base, m_phase_str [base->GetBegin () + len]);
-			parent->SetChild (new_node, m_phase_str [base->GetBegin ()]);
+			new_node->SetChild (base, m_one_str [base->GetBegin () + len]);
+			parent->SetChild (new_node, m_one_str [base->GetBegin ()]);
 			
 			base->SetBegin (base->GetBegin () + len);
 			base->SetParent (new_node);
@@ -149,7 +150,7 @@ namespace NMSAlgo {
 		}
 		
 		void PrintEdge (BaseNode* node, const std::string & prefix) const {
-			std::string edge_str = m_str_arr[node->GetFirstStrIndex ()];
+			std::string edge_str = m_str_arr[node->GetPrimaryIndex ()];
 			
 			std::cout << prefix << std::string().assign (
 				edge_str,
@@ -168,12 +169,11 @@ namespace NMSAlgo {
 		) const
 		{
 			BaseState ret {from, len, ch};
-			std::string edge_str = m_str_arr [m_one_str_index];
-			
+
 			while (ret.length && ret.node->GetChild (ret.ch)->GetEdgeLength (i + 1) < ret.length) {
 				ret.node = ret.node->GetChild (ret.ch);
 				ret.length -= ret.node->GetEdgeLength (i + 1);
-				ret.ch = edge_str[i - ret.length];
+				ret.ch = m_one_str[i - ret.length];
 			}
 			if (!ret.length) {
 				ret.ch = 0;
@@ -218,7 +218,11 @@ namespace NMSAlgo {
 		
 		if (!len) {
 			assert (ch == 0);			
-			if (node_walk_from->GetChild (m_str [i])) {
+			if (node_walk_from->GetChild (m_one_str [i])) {
+				BaseNode *seeking_node = node_walk_from->GetChild (m_one_str [i]);
+				if (seeking_node->IsLeaf () && seeking_node->GetEdgeLength (i + 1) == 1) {
+					seeking_node->AddStringIndex (m_one_str_index);
+				}
 				return BaseRet {nullptr, nullptr};
 			}
 			else {		
@@ -232,7 +236,8 @@ namespace NMSAlgo {
 			assert (node_walk_from->GetChild (ch)->GetEdgeLength (i + 1) > len);
 			
 			BaseNode* node_begin = node_walk_from->GetChild (ch);
-			if (m_str[node_begin->GetBegin () + len] == m_str[i]) {
+			std::string edge_str = m_str_arr[node_begin->GetPrimaryIndex ()];
+			if (edge_str[node_begin->GetBegin () + len] == m_one_str[i]) {
 				return BaseRet {nullptr, nullptr};
 			}
 			else {

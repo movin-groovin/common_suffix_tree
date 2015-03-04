@@ -39,7 +39,7 @@ public:
 	}
 	virtual void SetChild (CBaseNode* child, char ch) {
 		assert (false);
-		return nullptr;
+		return;
 	}
 	
 	//
@@ -72,14 +72,15 @@ public:
 		);
 		return counter == SizeStrArr;
 	}
-	size_t GetFirstStrIndex () const {
-		assert (false);
-		return 0;
+	size_t GetPrimaryIndex () const {
+		return m_primary_index;
 	}
 	
 	//
 	
-	CBaseNode (CBaseNode * p): m_parent (p) {
+	CBaseNode (CBaseNode * p, size_t primary_index):
+		m_parent (p), m_primary_index(primary_index)
+	{
 		std::fill (&m_str_ind_arr[0], &m_str_ind_arr[0] + SizeStrArr, 0);
 		return;
 	}
@@ -87,6 +88,7 @@ public:
 
 private:
 	unsigned char m_str_ind_arr[SizeStrArr];
+	size_t m_primary_index;
 	CBaseNode* m_parent;
 };
 
@@ -110,9 +112,9 @@ public:
 		return;
 	}
 	
-	CFastLeafNode (size_t i, CBaseNode <SizeStrArr>* parent):
+	CFastLeafNode (size_t i, CBaseNode <SizeStrArr>* parent, size_t primary_index):
 		m_i(i),
-		CBaseNode <SizeStrArr> (parent)
+		CBaseNode <SizeStrArr> (parent, primary_index)
 	{}
 	
 	~ CFastLeafNode () {}
@@ -165,12 +167,13 @@ public:
 	CFastInternalNode (
 		size_t i,
 		size_t j,
-		BaseNode* parent
+		BaseNode* parent, 
+		size_t primary_index
 	):
 		m_i(i),
 		m_j(j),
 		m_suff_link (nullptr),
-		BaseNode(parent)
+		BaseNode(parent, primary_index)
 	{
 		assert (!parent->IsLeaf ());
 		std::fill (&m_childs[0], &m_childs[0] + BaseNode::chars_number, nullptr);
