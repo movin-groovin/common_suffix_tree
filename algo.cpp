@@ -11,7 +11,7 @@
 
 namespace NMSAlgo {
 	
-	template <size_t SizeStrArr = 10, char TerminalChar = '$'>
+	template <size_t SizeStrArr = 10>
 	class CCommonSuffixTree {
 	public:
 		typedef CBaseNode <SizeStrArr> BaseNode;
@@ -27,6 +27,7 @@ namespace NMSAlgo {
 	private:
 		BaseNode* m_root;
 		std::string m_str_arr[SizeStrArr];
+		//std::string m_str_terminals[SizeStrArr];
 		std::string m_one_str;
 		size_t m_one_str_index;
 		
@@ -41,6 +42,15 @@ namespace NMSAlgo {
 		
 		virtual BaseNode* MakeInetrnalNode (size_t i, size_t j, BaseNode* parent, size_t primary_index) {
 			return new CFastInternalNode<SizeStrArr> (i, j, parent, primary_index);
+		}
+		
+		size_t GetRightEdgeLength (BaseNode *node, size_t end) const {
+			if (node->IsLeaf() && node->GetPrimaryIndex() != m_one_str_index) {
+				return m_str_arr[node->GetPrimaryIndex ()].length() - node->GetBegin();
+			}
+			else {
+				return node->GetEdgeLength(end);
+			}
 		}
 		
 		void CopyStrIndexesLeafsToInternals ();
@@ -58,10 +68,11 @@ namespace NMSAlgo {
 		
 		virtual ~ CCommonSuffixTree () {delete m_root;}
 		// ----------------------------------------------------------
-		void ConstructByUkkonenAlgo (const std::vector <std::string> & data) {
-			BaseState ret_inf = {m_root, 0, 0};
-			
-			
+		void ConstructByUkkonenAlgo (
+			const std::vector <std::string> & data,
+			const std::vector <std::string> & str_terminals
+		)
+		{
 			if (data.size() > SizeStrArr) {
 				std::ostringstream ossCnv;
 				ossCnv << SizeStrArr;
@@ -71,8 +82,9 @@ namespace NMSAlgo {
 			}
 			
 			for (unsigned i = 0; i < data.size(); ++i) {
-				m_one_str = m_str_arr[i] = data[i] + TerminalChar;
+				m_one_str = m_str_arr[i] = data[i] + str_terminals[i];
 				m_one_str_index = i;
+				BaseState ret_inf = {m_root, 0, 0};
 				for (size_t j = 0; j < m_one_str.length (); ++j) {
 					ret_inf = AppendChar (ret_inf.node, ret_inf.ch, ret_inf.length, j);
 				}
@@ -150,7 +162,7 @@ namespace NMSAlgo {
 		}
 		
 		void PrintEdge (BaseNode* node, const std::string & prefix) const {
-			std::string edge_str = m_str_arr[node->GetPrimaryIndex ()];
+			const std::string &edge_str = m_str_arr[node->GetPrimaryIndex ()];
 			
 			std::cout << prefix << std::string().assign (
 				edge_str,
@@ -170,15 +182,15 @@ namespace NMSAlgo {
 		{
 			BaseState ret {from, len, ch};
 
-			while (ret.length && ret.node->GetChild (ret.ch)->GetEdgeLength (i + 1) < ret.length) {
+			while (ret.length && GetRightEdgeLength (ret.node->GetChild (ret.ch), i + 1) < ret.length) {
 				ret.node = ret.node->GetChild (ret.ch);
-				ret.length -= ret.node->GetEdgeLength (i + 1);
+				ret.length -= GetRightEdgeLength (ret.node, i + 1);
 				ret.ch = m_one_str[i - ret.length];
 			}
 			if (!ret.length) {
 				ret.ch = 0;
 			}
-			if (ret.length && ret.node->GetChild (ret.ch)->GetEdgeLength (i + 1) == ret.length) {
+			if (ret.length && GetRightEdgeLength (ret.node->GetChild (ret.ch), i + 1) == ret.length) {
 				ret.node = ret.node->GetChild (ret.ch);
 				ret.length = 0;
 				ret.ch = 0;
@@ -202,8 +214,8 @@ namespace NMSAlgo {
 		);
 	};
 	// ====================================================================================
-	template <size_t SizeStrArr, char TerminalChar>
-	Ret <CBaseNode <SizeStrArr>*> CCommonSuffixTree <SizeStrArr, TerminalChar>::AddSuffix (
+	template <size_t SizeStrArr>
+	Ret <CBaseNode <SizeStrArr>*> CCommonSuffixTree <SizeStrArr>::AddSuffix (
 		BaseNode* node_walk_from,
 		char ch,
 		size_t len,
@@ -219,10 +231,6 @@ namespace NMSAlgo {
 		if (!len) {
 			assert (ch == 0);			
 			if (node_walk_from->GetChild (m_one_str [i])) {
-				BaseNode *seeking_node = node_walk_from->GetChild (m_one_str [i]);
-				if (seeking_node->IsLeaf () && seeking_node->GetEdgeLength (i + 1) == 1) {
-					seeking_node->AddStringIndex (m_one_str_index);
-				}
 				return BaseRet {nullptr, nullptr};
 			}
 			else {		
@@ -253,8 +261,8 @@ namespace NMSAlgo {
 		return BaseRet {nullptr, nullptr};
 	}
 	// ====================================================================================
-	template <size_t SizeStrArr, char TerminalChar>
-	State <CBaseNode <SizeStrArr>*> CCommonSuffixTree<SizeStrArr, TerminalChar>::AppendChar (
+	template <size_t SizeStrArr>
+	State <CBaseNode <SizeStrArr>*> CCommonSuffixTree<SizeStrArr>::AppendChar (
 		BaseNode* node,
 		char ch,
 		size_t length,
@@ -281,14 +289,14 @@ namespace NMSAlgo {
 				if (!ch) { // && !length
 					assert (length == 0);
 					
-					if (exist_node->GetChild(m_str[i])->GetEdgeLength(i + 1) == 1) {
-						return BaseState {exist_node->GetChild(m_str[i]), 0, 0};
+					if (GetRightEdgeLength(exist_node->GetChild(m_one_str[i]), i + 1) == 1) {
+						return BaseState {exist_node->GetChild(m_one_str[i]), 0, 0};
 					}
-					return BaseState {exist_node, 1, m_str[i]};
+					return BaseState {exist_node, 1, m_one_str[i]};
 				}
 				// GetEdgeLength (i + 1) -> i + 1, not i, because we have
 				// added implicitly for every leaf node new character
-				else if (exist_node->GetChild (ch)->GetEdgeLength (i + 1) == length + 1) {
+				else if (GetRightEdgeLength(exist_node->GetChild(m_one_str[i]), i + 1) == length + 1) {
 					exist_node = exist_node->GetChild (ch);
 					return BaseState {exist_node, 0, 0};
 				}
@@ -315,12 +323,12 @@ namespace NMSAlgo {
 					else {
 						--length;
 						exist_node = ret.new_node->GetParent();
-						ch = m_str[ret.new_node->GetBegin() + 1];
+						ch = m_one_str[ret.new_node->GetBegin() + 1];
 					}
 				}
 				else {
 					length = ret.new_node->GetEdgeLength();
-					ch = m_str[ret.new_node->GetBegin()];
+					ch = m_one_str[ret.new_node->GetBegin()];
 					exist_node = ret.new_node->GetParent()->GetSuffLink();
 				}
 			}
@@ -371,10 +379,11 @@ std::string ReadFromStreamUntilEof (std::istream & in_s, char no_ch) {
 int main (int argc, char **argv) {
 	try {
 		std::vector<std::string> test_data {"abc", "bcb", "abcd"};
+		std::vector <std::string> terminals {"@", "#", "$"};
 		NMSAlgo::CCommonSuffixTree <> cs_tree;
 		
 
-		cs_tree.ConstructByUkkonenAlgo (test_data);
+		cs_tree.ConstructByUkkonenAlgo (test_data, terminals);
 #ifndef NDEBUG
 		std::cout << "\nStrings:\n";
 		for (auto &val : test_data)
