@@ -1,7 +1,8 @@
 
-// g++ -std=c++11 ukkonen.cpp -o ukk_algo -g -pg
-// g++ -std=c++11 ukkonen.cpp -o ukk_algo -DNDEBUG
-// g++ -std=c++11 ukkonen.cpp -o ukk_algo -DNDEBUG -DMEMORY_TEST
+// g++ -std=c++11 algo.cpp -o cst -g
+// g++ -std=c++11 algo.cpp -o cst -g -pg
+// g++ -std=c++11 algo.cpp -o cst -DNDEBUG
+// g++ -std=c++11 algo.cpp -o cst -DNDEBUG -DMEMORY_TEST
 
 #include "headers.hpp"
 #include "nodes.hpp"
